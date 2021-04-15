@@ -3,56 +3,90 @@
 #include <cstdlib>
 #include <cmath>
 using namespace std;
-const int N = 15;  //TWL
-const int M = 25; //3RD
+
+
+const int N = 4;  //TWL
+const int M = 8; //3RD
 int counter=0;
 char grid[N][M];
 
-//srand( (unsigned)time( NULL ) );
-int n2=rand()%N;
-int n=rand()%N;
+const int MAXQUEUE = N*M;
+//typedef int QueueEntry;
+
+struct Queue{
+ int front;
+ int rear;
+ int size;
+ int entry[MAXQUEUE][2];
+};
+
+Queue pq;
+
+void CreateQueue(Queue *pq){
+    pq->front= 0;
+    pq->rear = -1;
+    pq->size = 0;
+}
+
+void Append(int a,int b, Queue* pq){
+ pq->rear = (pq->rear + 1) % MAXQUEUE;
+ pq->entry[pq->rear][0] = a;
+ pq->entry[pq->rear][1] = b;
+ pq->size++;
+}
+
+void Serve(int *a, int *b, Queue * pq){
+ *a = pq->entry[pq->front][0];
+ *b = pq->entry[pq->front][1];
+ pq->front = (pq->front + 1) % MAXQUEUE;
+ pq->size--;
+
+}
+
+
 //This function prints the grid of Gomoku as the game progresses
 void print_grid() {
-
     cout << "\n";
-	cout << "__";
-    for (int i = 0; i < M; cout << "___", i++);
-    cout << "__\n";
+	cout << "--";
+    for (int i = 0; i < M; cout << "---", i++);
+    cout << "--\n";
     for (int i = 0; i < N; i++) {
-            if( i==n ){cout<<"   ";}
-        else{cout << "|  ";   }   //left
+        cout << "|  ";
         for (int j = 0; j < M; j++)
             cout << grid[i][j] << "  ";
-            if( i==n2 ){cout<<" \n";}
-        else {cout << "|\n";}
+        cout << "|\n";
         cout << "";
         for (int i = 0; i < M; cout << "", i++);
     }
-    cout<<"|"; for (int i = 0; i < M; cout << "___", i++);
-    cout << "__|\n";
-}
+    for (int i = 0; i < M; cout << "---", i++);
+    cout << "----\n";
+} 
 
 //This function checks if the game has a win state or not
-bool check_win(int a, int b ) {
-    if(a==n2 && b+1==M){return true;}
-    else{return false;}
+bool check_eat(int i,int &a, int &b) {
+     
+    if (i==3){ if(grid[a][b+1]=='+'){ grid[a][b]='_'; grid[a][b+1]='0'; Append(a,b+1,&pq); b+=1;
+                                            counter++; return true;               }} //right
 
+ else if (i==1){ if(grid[a-1][b]=='+'){  grid[a][b]='_';   grid[a-1][b]='0'; Append(a-1,b,&pq); a-=1;
+                                            counter++; return true;                } }   // up
+
+ else if (i==2){  if(grid[a+1][b]=='+'){grid[a][b]='_'; grid[a+1][b]='0'; Append(a+1,b,&pq);  a+=1;
+                                                   counter++; return true;               }}  //down
+
+ else if (i==4){  if(grid[a][b-1]=='+'){grid[a][b]='_';  grid[a][b-1]='0'; Append(a,b-1,&pq);  b-=1;
+                                                     counter++; return true;            }}   //left
+return false;
 }
 
-
-//This function checks if the game has a tie state or not for the given mark
-bool check_wall(int i, int a , int b) {
-if (i==3){  if(grid[a][b+1]=='|' || grid[a][b+1]=='_' ){return true;}}
-
-else if (i==1){ if(grid[a-1][b]=='|' || grid[a][b+1]=='_' ){return true;}}
-
-else if (i==2){  if(grid[a+1][b]=='|' || grid[a][b+1]=='_' ){return true;}}
-
-else if (i==4){  if(grid[a][b-1]=='|' || grid[a][b+1]=='_' ){return true;}}
-  return false;
-}
-
-
+//This function checks if given position is valid or not
+bool check_lose(int i,int a,int b) {
+      if (i==3){ if(grid[a][b+1]=='_'){return true;} if(b+1>M-1){return true;}  } //right
+ else if (i==1){ if(grid[a-1][b]=='_'){return true;} if(a-1<0){return true;} }   // up
+ else if (i==2){ if(grid[a+1][b]=='_'){return true;} if(a+1>N-1){return true;}}   //down
+ else if (i==4){ if(grid[a][b-1]=='_'){return true;} if(b-1<0){return true;}}     //left
+return false;
+ }
 
 //This function checks if given position is valid or not
 bool check_valid_direction(int i) {
@@ -63,78 +97,93 @@ bool check_valid_direction(int i) {
 }
 
 //This function generates pac man
-void generate_man(int &a , int &b) {
-
-    a = n;
-	b = 0;
-    grid[a][b] = 'M';
+void generate_snake(int &a , int &b) {
+    srand( (unsigned)time( NULL ) );
+    a = rand() % N;
+	b = rand() % M;
+    grid[a][b] = '0';
+    Append(a,b,&pq);
 }
 
-//This function generates a wall
-void generate_wall() {
+//This function generates ghosts
+void generate_apple() {
     srand( (unsigned)time( NULL ) );
-    int f=N*M*1/6;
-    while ( f>0 )
-    {
     int a = rand() % N;
 	int b = rand() % M;
-    while ( grid[a][b] == 'M' || (a==n2 && b==M-1) || (a==n2-1 && b==M-1) || (a==n2+1 && b==M-1) || (a==n && b==1)
-                             || (a==n-1 && b==0) || (a==n+1 && b==0)||(a==n-1 && b==1) || (a==n+1 && b==1)) {
-
+    while (grid[a][b] == '_' || grid[a][b] == '0') {
         a = rand() % N;
         b = rand() % M;
 	}
-    grid[a][b] = '|';
-    f--;
-    }
-}
+    grid[a][b] = '+';
 
-void generate_() {
-    srand( (unsigned)time( NULL ) );
-    int f=N*M*1/8;
-    while ( f>0 )
-    {
-    int a = rand() % N;
-	int b = rand() % M;
-    while ( grid[a][b] == 'M' || grid[a][b] == '|' || (a==n-1 && b==0) ||
-            (a==n+1 && b==0)||(a==n-1 && b==1) || (a==n+1 && b==1) || (a==n && b==1)
-           ||(a==n2 && b==M-1) || (a==n2-1 && b==M-1) || (a==n2+1 && b==M-1))  {
-        a = rand() % N;
-        b = rand() % M;
-	}
-    grid[a][b] = '_';
-    f--;
-    }
 }
-
 
 
 //Move with the input direction
 void move(int i,int &a,int &b) {
-    grid[a][b]='.';
-    if (i==3){  if(grid[a][b+1]=='+'){counter+=1; grid[a][b+1]='M';   }
-                else if(grid[a][b+1]=='.'){ grid[a][b+1]='M';  } b+=1;  } //right
+    int x,y;
+    if (counter>=1){
 
- else if (i==1){ if(grid[a-1][b]=='+'){counter+=1; grid[a-1][b]='M';}
-                 else if(grid[a-1][b]=='.'){ grid[a-1][b]='M'; }  a-=1;  }   // up
+    if (i==3){
+              Serve(&x,&y,&pq); grid[x][y]=' '; 
+              grid[a][b+1]='0'; grid[a][b]='_'; 
+              Append(a,b+1,&pq); b+=1;} //right
 
- else if (i==2){  if(grid[a+1][b]=='+'){counter+=1; grid[a+1][b]='M';}
-                    else if(grid[a+1][b]=='.'){ grid[a+1][b]='M'; } a+=1;}  //down
+ else if (i==1){ 
+              Serve(&x,&y,&pq); grid[x][y]=' ';
+               grid[a-1][b]='0';grid[a][b]='_';
+                Append(a-1,b,&pq); a-=1; }   // up
 
- else if (i==4){  if(grid[a][b-1]=='+'){counter+=1; grid[a][b-1]='M';}
-                  else if(grid[a][b-1]=='.'){ grid[a][b-1]='M'; }b-=1;}  }   //left
+ else if (i==2){
+               Serve(&x,&y,&pq); grid[x][y]=' ';
+               grid[a+1][b]='0';grid[a][b]='_'; 
+               Append(a+1,b,&pq);  a+=1;}  //down
+
+ else if (i==4){
+              Serve(&x,&y,&pq); grid[x][y]=' ';
+              grid[a][b-1]='0';grid[a][b]='_';
+              Append(a,b-1,&pq);  b-=1;}   //left
+    }
+
+    else{
+              if (i==3){
+               Serve(&x,&y,&pq); 
+              if(x>=0 && y>=0 ){grid[x][y]=' ';} else {grid[a][b]=' ';} 
+               grid[a][b+1]='0'; Append(a,b+1,&pq);
+                b+=1; } //right
+
+ else if (i==1){ 
+              Serve(&x,&y,&pq);
+              if(x>=0 && y>=0 ){grid[x][y]=' ';} else {grid[a][b]=' ';}  
+              grid[a-1][b]='0'; Append(a-1,b,&pq);
+              a-=1; }   // up
+
+ else if (i==2){  
+              Serve(&x,&y,&pq); 
+               if(x>=0 && y>=0 ){grid[x][y]=' ';} else {grid[a][b]=' ';} 
+               grid[a+1][b]='0'; Append(a+1,b,&pq);
+                 a+=1;}  //down
+
+ else if (i==4){  
+              Serve(&x,&y,&pq);
+              if(x>=0 && y>=0 ){grid[x][y]=' ';} else {grid[a][b]=' ';} 
+               grid[a][b-1]='0'; Append(a,b-1,&pq);
+               b-=1;}}
+
+              }
 
 //This function clears the game structures
-void grid_clear() {
+void grid_clear(Queue &pq) {
      for (int i =0 ; i<N; i++){
             for (int j =0 ; j<M; j++){
-                grid[i][j]='.';
+                grid[i][j]=' ';
             }
         }
-
+    CreateQueue(&pq);
+    counter=0;
 }
 //This function reads a valid direction
-void read_input(int &i,int &a, int &b) {
+void read_input(int &i ) {
     cout << "Enter the direction: ";
 	cin >> i;
     while (!check_valid_direction(i)) {
@@ -144,51 +193,48 @@ void read_input(int &i,int &a, int &b) {
 }
 //MAIN FUNCTION
 void play_game(int &a,int &b) {
-    cout << "Pac-Man Game!\n";
+    cout << "snake Game!\n";
     cout << "Welcome...\n";
     cout << "============================\n";
     while (true) {
-
         //Prints the grid
         print_grid();
         //Read an input from the player
 		int i;
-		read_input(i,a,b);
+		read_input(i);
 
         //Check if the state of the grid has a tie state
-        /*if (check_lose(i,a,b)) {
+        if (check_lose(i,a,b)) {
             //Prints the grid
             print_grid();
             //Announcement of the final statement
-            cout << "GAME OVER!\n";
+            cout << "GAME OVER!\n"<<endl;
+            cout<<"Your score :"<< counter<<endl;
             break;
-        }*/
-        if(check_wall(i,a,b)){
-            cout<<"WHATCH OUT you hit a wall !! please " ;
-            read_input(i,a,b);
         }
-        //Move with the input direction
-        move(i,a,b);
+
         //Check if the state of the grid has a win state
-        if (check_win(a,b)) {
+        if (check_eat(i,a,b)) {
             //Prints the grid
             print_grid();
             //Announcement of the final statement
-            cout << "Congrats, you won!\n";
-            break;
+            generate_apple();
+
         }
+        else {//Move with the input direction
+               move(i,a,b);
+               }
+        cout<<"Your score :"<<counter<<endl;
 
     }
 }
 int main() {
     while (true) {
         int a,b;
-        grid_clear();
-        //
-        generate_man(a,b);
-
-        generate_wall();
-        generate_();
+        Queue pq;
+        grid_clear(pq);
+        generate_snake(a,b);
+        generate_apple();
     	play_game(a,b);
     	char c;
     	cout << "Play Again [Y/N] ";
